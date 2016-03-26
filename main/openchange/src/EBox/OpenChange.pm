@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014 Zentyal S.L.
+# Copyright (C) 2013-2015 Zentyal S.L.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2, as
@@ -302,8 +302,7 @@ sub _setConf
 
     $self->_setOCSManagerConf();
 
-    # FIXME: this may cause unexpected samba restarts during save changes, etc
-    #$self->_writeCronFile();
+    $self->_writeCronFile();
 
     $self->_setupActiveSync();
 }
@@ -360,8 +359,16 @@ sub _writeCronFile
 
     my $cronfile = '/etc/cron.d/zentyal-openchange';
     if ($self->isEnabled()) {
-        my $checkScript = '/usr/share/zentyal-openchange/check_oc.py';
-        my $crontab = "* * * * * root $checkScript || /sbin/restart samba-ad-dc";
+        my $accountScript = EBox::Config::scripts($self->name()) . 'account';
+        unless ($self->st_entry_exists('cron_rand_hour') and $self->st_entry_exists('cron_rand_min')) {
+            $self->st_set_int('cron_rand_hour', int(rand(24)));
+            $self->st_set_int('cron_rand_min', int(rand(60)));
+        }
+        my ($randHour, $randMin) = ($self->st_get_int('cron_rand_hour'), $self->st_get_int('cron_rand_min'));
+        my $crontab = "$randMin $randHour * * * root $accountScript 2> /dev/null";
+        # FIXME: this may cause unexpected samba restarts during save changes, etc
+        # my $checkScript = '/usr/share/zentyal-openchange/check_oc.py';
+        # $crontab .= "* * * * * root $checkScript || /sbin/restart samba-ad-dc";
         EBox::Sudo::root("echo '$crontab' > $cronfile");
     } else {
         EBox::Sudo::root("rm -f $cronfile");
@@ -684,6 +691,35 @@ sub setProvisioned
     my $state = $self->get_state();
     $state->{isProvisioned} = $provisioned;
     $self->set_state($state);
+}
+
+# Method: users
+#
+#     Return the users that has used OpenChange at least once, that
+#     is, the MAPI users
+#
+# Returns:
+#
+#     Array ref - empty array if not provisioned, an array with
+#     usernames otherwise
+#
+sub users
+{
+    my ($self) = @_;
+
+    if (not $self->isProvisioned()) {
+        return 0;
+    }
+
+    my $dbEngine = new EBox::OpenChange::DBEngine($self);
+    $dbEngine->connect();
+
+    my @users;
+    my $ret =  $dbEngine->query_hash({'select' => 'name', 'from' => 'mailboxes'});
+    if ($ret) {
+        @users = map { $_->{'name'} } @{$ret};
+    }
+    return \@users;
 }
 
 sub _mysqlDumpFile

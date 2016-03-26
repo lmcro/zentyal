@@ -1,3 +1,21 @@
+4.2.2
+	+ Allow upgrade of packages that are not present in QA repo
+	+ Avoid crash in manage-logs script with undefined mods
+	+ Fix error while visiting System -> General as root user
+	+ Fix empty lines in /etc/resolv.conf
+4.2.1
+	+ Improvements in RESTClient
+	+ Fix warning on server edition widget from registered users
+4.2
+	+ Set proper motd after edition name changes
+	+ Avoid XSS on search when entering JS code
+4.1.5
+	+ Fix possible redis corruption when deleting data table rows
+	  with ids sharing the same prefix
+4.1.4
+	+ Remove non-numeric value warning in data table size control
+	+ Added skip-lock-tables, quick and single-transaction parameters to
+	  mysqldump command when dumping databases
 4.1.3
 	+ Added JS function Zentyal.escapeHTTPQuery
 4.1.2

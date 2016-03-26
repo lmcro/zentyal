@@ -112,7 +112,6 @@ use IO::Socket::UNIX;
 
 
 use constant SAMBA_DIR            => '/home/samba/';
-use constant SAMBATOOL            => '/usr/bin/samba-tool';
 use constant SAMBACONFFILE        => '/etc/samba/smb.conf';
 use constant SHARESCONFFILE       => '/etc/samba/shares.conf';
 use constant PRIVATE_DIR          => '/var/lib/samba/private/';
@@ -369,11 +368,6 @@ sub initialSetup
         my $firewall = EBox::Global->modInstance('firewall');
         $firewall->setInternalService($serviceName, 'accept');
         $firewall->saveConfigRecursive();
-    }
-
-    # Clean old cron file when upgrading from 4.0
-    if (defined ($version) and (EBox::Util::Version::compare($version, '4.1') < 0)) {
-        EBox::Sudo::root('rm -f /etc/cron.d/zentyal-users');
     }
 }
 
@@ -666,20 +660,6 @@ sub _services
                 'description' => 'Microsoft global catalog over SSL',
             },
         ];
-}
-
-
-# Generate, store in the given file and return a password
-sub _genPassword
-{
-    my ($self, $file) = @_;
-
-    my $pass = EBox::Util::Random::generate(20);
-    my ($login,$password,$uid,$gid) = getpwnam('ebox');
-    EBox::Module::Base::writeFile($file, $pass,
-            { mode => '0600', uid => $uid, gid => $gid });
-
-    return $pass;
 }
 
 # Method: wizardPages
@@ -1192,6 +1172,7 @@ sub _daemonsToDisable
     return [
         { 'name' => 'smbd', 'type' => 'upstart' },
         { 'name' => 'nmbd', 'type' => 'upstart' },
+        { 'name' => 'winbind', 'type' => 'upstart' },
     ];
 }
 
@@ -1946,25 +1927,17 @@ sub menu
                                         text => __('Users and Computers'),
                                         tag => 'main',
                                         order => 1);
-    if ($self->configured()) {
-        $folder->add(new EBox::Menu::Item(
-            'url'  => 'Samba/Tree/Manage',
-            'text' => __('Manage'), order => 10));
+    $folder->add(new EBox::Menu::Item(
+        'url'  => 'Samba/Tree/Manage',
+        'text' => __('Manage'), order => 10));
 
-        $folder->add(new EBox::Menu::Item(
-            'url'  => 'Samba/Composite/UserTemplate',
-            'text' => __('User Template'), order => 30));
+    $folder->add(new EBox::Menu::Item(
+        'url'  => 'Samba/Composite/UserTemplate',
+        'text' => __('User Template'), order => 30));
 
-        $folder->add(new EBox::Menu::Item(
-            'url'  => 'Samba/Composite/Settings',
-            'text' => __('LDAP Settings'), order => 50));
-    } else {
-        $folder->add(new EBox::Menu::Item(
-            'url'       => 'Samba/View/Mode',
-            'text'      => __('Configure mode'),
-            'section'   => 3,
-            'order'     => 0));
-    }
+    $folder->add(new EBox::Menu::Item(
+        'url'  => 'Samba/Composite/Settings',
+        'text' => __('LDAP Settings'), order => 50));
     $root->add($folder);
 
     $root->add(new EBox::Menu::Item(text      => __('File Sharing'),

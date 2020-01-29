@@ -1,0 +1,15 @@
+#!/bin/bash
+
+systemctl stop suricata || true
+
+modprobe nfnetlink_queue
+
+# ensure read permissions for loggerd
+touch /var/log/suricata/fast.log
+chgrp adm /var/log/suricata/fast.log
+
+# workaround for broken systemd service, enforce use of init.d script
+rm -f /lib/systemd/system/suricata.service
+systemctl daemon-reload
+
+exit 0

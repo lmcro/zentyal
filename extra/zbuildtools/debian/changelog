@@ -1,3 +1,21 @@
+zbuildtools (13) bionic; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Mon, 03 Sep 2018 07:42:18 +0200
+
+zbuildtools (12) xenial; urgency=medium
+
+  * Fix $MODULE_NAME for packages with several dashes
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Mon, 19 Mar 2018 01:35:53 +0100
+
+zbuildtools (11) xenial; urgency=medium
+
+  * Xenial version for Zentyal 5.0
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sat, 21 May 2016 12:21:31 +0200
+
 zbuildtools (10) saucy; urgency=low
 
   * Saucy version for Zentyal 3.4

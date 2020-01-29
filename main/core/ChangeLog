@@ -1,3 +1,115 @@
+6.1.2
+	+ Improve upgrade process
+	+ Set to 85% the min value for ram usage before the notification has been triggered
+	+ Remove -x from ram checker script
+	+ Fix several typos
+6.1.1
+	+ Fix repo name
+	+ Add curl as core dependency
+	+ Fixed wrong image name
+	+ Add smart alerts to Smart Admin feature
+	+ Add kernel management to Smart Admin feature
+	+ Add mail recipient for smart admin report
+6.1
+	+ Fix broken link to zentyal store and tracker in dashboard widget
+	+ Add log rotation for uwsgi.log
+	+ Add "Smart Admin" > "System status report settings" feature to GUI
+	+ Zentyal GUI supported by Safari
+	+ Set uwsgi's custom log
+	+ Add "Smart Admin" > "System Status Report" feature to GUI
+	+ Update external link in EBox::Config
+	+ Add "Smart Admin" menu entry
+	+ Add smart-admin-report script to /usr/share/zentyal to get a complete system status report
+	+ Distribution base is now Ubuntu 18.04.3 LTS
+6.0.2
+	+ Fix upgrade button
+	+ Add release upgrade code (available to update from 6.0 to 6.1)
+6.0.1
+	+ Fix CSS for Activation Required page
+	+ License activation after first login in commercial edition
+6.0
+	+ Add bash completion for zs command
+	+ Simplify nginx.conf includes management
+	+ Fix undefined $actualValue warning in ViewCustomizer
+	+ Fix unitialized $filter warning in tableBody.mas
+	+ Set default size of EBox::Types::Int to 6
+	+ Use /etc/apt/auth.conf instead of embedding login info in sources.list
+	+ Avoid use of apt-key add installing zentyal-qa pubkey in /etc/apt/trusted.gpg.d
+	  as gnupg is no longer installed as dependency
+	+ Login page form is now centered in a responsive way
+	+ Simplify interpreter code and avoid warnings with HTML::Mason templates
+	+ Allow new status field in daemon description to use a different daemon
+	  name to check running status
+	+ Syntax changes to be compliant with Perl 5.26
+	+ Use 5.1-nss repo for NS license keys
+	+ Allow offline license key validation
+	+ Automatic save changes in license activation after first login
+	+ Avoid errors when parsing JSON for dashboard widgets
+	+ Force restore of configuration backup from 3.X by using custom script
+	+ Adapt nginx conf to allow vncviewer for zentyal-virt
+	+ Add zentyal-virt icon
+	+ Add support for licenses with unlimited users
+5.1.1
+	+ Change trial messages to adapt to new 45-day period
+	+ Add support for pepertual licenses
+5.1
+	+ NetWrappers::list_ifaces() now ignores invalid ones like bonding_masters
+	+ Reimplement EBox::Validate::isIPInNetwork using NetAddr::IP
+	+ Safer management of systemd daemons enabled/disabled status
+	+ Add libpam-cap dependency to avoid warnings in auth.log
+	+ Avoid uninitialized comparison warnings in zentyal.log regarding
+	  EBox::Types::Service and EBox::Types::IPAddr
+	+ Use POST method when submitting forms in AJAX requests from dialogs
+	+ Pass action to HTMLSetter templates so they can have a different
+	  behavior for add and edit
+	+ Avoid errors when license file not exist in webadmin restart
+	+ Services stop working and activation is required after trial expired
+	+ Allow up to 12 dashboard widgets per section instead of 4
+	+ Add ftp icon
+	+ Rename l2tp package icon to ipsec
+	+ Forbid creation of local administrator user if exists in samba
+	+ Use EBox::Config::version for commercial repo URL
+	+ Simplify _readTheme code and remove unnecessary zentyal.log noise
+5.0.10
+	+ Fix regression in EBox::Util::Version
+5.0.9
+	+ Wait for redis-server ready in systemd service
+	+ Remove warning in EBox::Util::Version
+	+ Add activate-license script to enter license key via CLI
+5.0.8
+	+ Avoid '/etc/localtime are the same file' errors using symlink
+	+ New activation-pending mode prompting for valid trial code before login
+5.0.7
+	+ Update external links in dashboard
+	+ Mask plaintext passwords in bug reports
+5.0.6
+	+ Show already validated license key in Server Edition model
+5.0.5
+	+ Handle error parsing license key in Server Edition model
+5.0.4
+	+ Display commercial edition license info in Server Edition
+	+ Proper management of development/commercial repos
+	+ Show warning in header when license or trial is expired
+	+ Recognise new 5-year commercial license type without support
+5.0.3
+	+ Support for commercial editions via license keys
+	+ Postinst script do not fail during upgrade from Zentyal 4.X
+	+ Allow restore of configuration backups from Zentyal 4.X
+5.0.2
+	+ Provide transitional dummy package to zentyal-common
+	+ Force nginx restart when webadmin port is changed
+5.0.1
+	+ Fix unknown column 'password' error with MySQL 5.7
+	+ Fix webadmin stop taking more than 1 minute in uwsgi systemd unit
+	+ Depend on patched libhtml-mason-perl to avoid $dir_path warning
+5.0
+	+ Distribution base is now Ubuntu 16.04 LTS
+	+ Use Clone instead of Clone::Fast
+	+ Some code adaptation to remove warnings with changes in Perl 5.2X
+	+ Remove deprecated 'remoteservices' internal module
+	+ Remove OpenChange crashes notifications in the dashboard
+	+ Get list of interfaces from /sys/class/net
+	+ Better management of webadmin reload using uwsgi master process
 4.2.2
 	+ Allow upgrade of packages that are not present in QA repo
 	+ Avoid crash in manage-logs script with undefined mods

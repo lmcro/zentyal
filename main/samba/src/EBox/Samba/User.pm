@@ -26,6 +26,7 @@ use base qw(EBox::Samba::SecurityPrincipal);
 
 use EBox::Config;
 use EBox::Global;
+use EBox::Sudo;
 use EBox::Gettext;
 use EBox::Samba;
 use EBox::Samba::Group;
@@ -44,7 +45,8 @@ use Net::LDAP::Control;
 use Net::LDAP::Entry;
 use Net::LDAP::Constant qw(LDAP_ALREADY_EXISTS LDAP_LOCAL_ERROR);
 use Date::Calc;
-use TryCatch::Lite;
+use File::Slurp;
+use TryCatch;
 
 use constant MAXUSERLENGTH  => 128;
 use constant MAXPWDLENGTH   => 512;
@@ -248,9 +250,6 @@ sub deleteObject
     EBox::Sudo::silentRoot("rm -rf '$path'");
 
     # TODO Remove this user from shares ACLs
-
-    # Remove from SSSd cache
-    EBox::Sudo::silentRoot("sss_cache -u '$samAccountName'");
 
     # Call super implementation
     $self->SUPER::deleteObject(@params);
@@ -486,22 +485,6 @@ sub create
     my $usersMod = EBox::Global->modInstance('samba');
     my $realm = $usersMod->kerberosRealm();
 
-    my $real_users = $usersMod->realUsers();
-
-    my $max_users = 0;
-    if (EBox::Global->modExists('remoteservices')) {
-        my $rs = EBox::Global->modInstance('remoteservices');
-        $max_users = $rs->maxUsers();
-    }
-
-    if ($max_users) {
-        if ( scalar(@{$real_users}) > $max_users ) {
-            throw EBox::Exceptions::External(
-                    __sx('Please note that the maximum number of users for your edition is {max} '
-                        . 'and you currently have {nUsers}',
-                        max => $max_users, nUsers => scalar(@{$real_users})));
-        }
-    }
     my $uidNumber = defined $args{uidNumber} ?
                             $args{uidNumber} :
                             $class->_newUserUidNumber($isSystemUser);
@@ -728,21 +711,33 @@ sub isInternal
 
     # FIXME: whitelist Guest account, Administrator account
     # do this better removing isCriticalSystemObject check
-    if ($self->isAdministratorOrGuest()) {
+    if ($self->isAdministrator() or $self->isGuest()) {
         return 0;
     }
 
     return ($self->isInAdvancedViewOnly() or $self->get('isCriticalSystemObject'));
 }
 
-# Method: isAdministratorOrGuest
+# Method: isAdministrator
 #
-#  Return if the user is Administrator or Guest system users
+#  Return if the user is Administrator system user
 #
-sub isAdministratorOrGuest
+sub isAdministrator
 {
     my ($self) = @_;
-    return (($self->sid() =~ /^S-1-5-21-.*-501$/) or ($self->sid() =~ /^S-1-5-21-.*-500$/));
+
+    return ($self->sid() =~ /^S-1-5-21-.*-500$/);
+}
+
+# Method: isGuest
+#
+#  Return if the user is Guest system user
+#
+sub isGuest
+{
+    my ($self) = @_;
+
+    return ($self->sid() =~ /^S-1-5-21-.*-501$/);
 }
 
 sub setInternal
@@ -965,6 +960,27 @@ sub passwordHashes
     return $krb5Keys;
 }
 
+sub setThumbnailPhoto
+{
+    my ($self, $file) = @_;
+
+    my $MAXSIZE = '96x96';
+
+    my $tmpfile = "/var/lib/zentyal/tmp/profile-photo-$$.jpg";
+
+    system("convert $file -resize '$MAXSIZE^' -gravity center -crop $MAXSIZE+0+0 +repage $tmpfile");
+
+    my $jpg = read_file($tmpfile, binmode => ':raw');
+    $self->set('thumbnailPhoto', $jpg);
+
+    my $share = EBox::Config::configkey('photo_share_name');
+    my $path = "/home/samba/shares/$share";
+    if ($share and EBox::Sudo::fileTest('-d', $path)) {
+        my $username = $self->name();
+        EBox::Sudo::root("cp $tmpfile $path/$username.jpg");
+    }
+}
+
 sub _checkUserName
 {
     my ($name) = @_;
@@ -1091,12 +1107,6 @@ sub _domainUsersGidNumber
     return $group->gidNumber();
 }
 
-sub _loginShell
-{
-    my $usersMod = EBox::Global->modInstance('samba');
-    return $usersMod->model('PAM')->login_shellValue();
-}
-
 sub quotaAvailable
 {
     return 1;
@@ -1214,6 +1224,88 @@ sub _krb5Keys
         push (@{$blobs}, $blob);
     }
     return $blobs;
+}
+
+# Method: showPaginationForm
+#
+#   Show pagination form in the view.
+#
+sub showPaginationForm
+{
+    return 1;
+}
+
+# Method: defaultPageSize
+#
+#   Return the default amount of elements to show
+#
+sub defaultPageSize
+{
+    return 10;
+}
+
+# Method: table
+#
+#   Configure table to show in the pagination of the tree.
+#
+sub table
+{
+    my $dataTable = {
+        'tableName'          => "Users",
+        'printableTableName' => __('Users'),
+        'confdir'            => "User"
+    };
+
+    return $dataTable;
+}
+
+# Method: changeViewJS
+#
+#     Return the javascript function to change view to
+#     add a row
+#
+# Parameters:
+#
+#    (NAMED)
+#    changeType - changeAdd or changeList
+#    editId - edit id
+#    page - page number
+#    isFilter - boolean indicating if comes from filtering
+#
+#
+# Returns:
+#
+#     string - holding a javascript funcion
+sub changeViewJS
+{
+    my ($self, %args) = @_;
+
+    my ($type, $editId, $page, $isFilter) = ($args{changeType},$args{editId}, $args{page},$args{isFilter},);
+
+    my $function = "Zentyal.TableHelper.changeView('%s','%s','%s','%s','%s', %s, %s)";
+
+    my $table = $self->table();
+    return sprintf ($function,
+                    '/Samba/ListContainer',
+                    $table->{'tableName'},
+                    $table->{'confdir'},
+                    $type,
+                    $editId,
+                    $page,
+                    $isFilter);
+}
+
+# Method: pageNumbersText
+#
+#  returns the localized string used in the pager.
+sub pageNumbersText
+{
+    my ($self, $page, $nPages) = @_;
+   if ($nPages == 1) {
+        return __('Page 1');
+   } else {
+        return __x('Page {i} of {n}', i => $page + 1, n => $nPages);
+   }
 }
 
 1;

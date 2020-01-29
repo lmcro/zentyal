@@ -19,21 +19,24 @@ models:
     - SambaShares
     - SambaSharePermissions
     - SambaDeletedShares
-    - AntivirusDefault
-    - AntivirusExceptions
     - RecycleDefault
     - RecycleExceptions
+    - ExportUsers
+    - ExportGroups
+    - ImportUsers
+    - ImportGroups
+    - SambaSettings
 
 composites:
+    Domain: [DomainSettings, GPOs]
     Settings: [LdapInfo, PAM]
     UserTemplate: []
     RecycleBin: [RecycleDefault, RecycleExceptions]
-    Antivirus: [AntivirusDefault, AntivirusExceptions]
-    FileSharing: [SambaShares, RecycleBin, Antivirus]
+    FileSharing: [SambaShares, RecycleBin, SambaSettings]
+    GPOs: []
+    ImportExport: [ExportUsers, ImportUsers, ExportGroups, ImportGroups]
 
 modeldepends:
-    AntivirusExceptions:
-        samba/SambaShares: [share]
     RecycleExceptions:
         samba/SambaShares: [share]
 

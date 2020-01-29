@@ -1,3 +1,33 @@
+zentyal-metapackages (6.1) xenial; urgency=medium
+
+  * Zentyal 6.1 metapackages
+
+ -- Bruno Lorente <blorente@zentyal.com>  Thu, 21 Oct 2019 11:59:46 +0000
+
+zentyal-metapackages (6.0) bionic; urgency=medium
+
+  * Zentyal 6.0 metapackages
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Wed, 26 Sep 2018 00:09:02 +0200
+
+zentyal-metapackages (5.1) xenial; urgency=medium
+
+  * Add ips and ftp
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sat, 03 Mar 2018 21:21:24 +0100
+
+zentyal-metapackages (5.0.1) xenial; urgency=medium
+
+  * Add antivirus, mailfilter and jabber
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Thu, 23 Feb 2017 11:50:38 +0100
+
+zentyal-metapackages (5.0) xenial; urgency=medium
+
+  * Zentyal 5.0 metapackages
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Mon, 17 Oct 2016 15:53:54 +0200
+
 zentyal-metapackages (4.2) trusty; urgency=medium
 
   * Zentyal 4.2 metapackages

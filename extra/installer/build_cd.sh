@@ -35,16 +35,6 @@ pushd $TMPDIR/zinstaller-headless
 dpkg-buildpackage
 popd
 
-if [ "$INCLUDE_REMOTE" == "true" ]
-then
-    # Build zinstaller-remote udeb
-    cp -rL zinstaller-remote $TMPDIR/zinstaller-remote
-    pushd $TMPDIR/zinstaller-remote
-    [ -f zinstaller-remote/jq ] || ./build-jq.sh
-    dpkg-buildpackage
-    popd
-fi
-
 for ARCH in $ARCHS
 do
     if [ -n "$SELECTED_ARCH" ] && [ "$ARCH" != "$SELECTED_ARCH" ]
@@ -72,20 +62,6 @@ do
         fi
     done
 
-    # Add zinstaller-remote udeb
-    if [ "$INCLUDE_REMOTE" == "true" ]
-    then
-        UDEB_DIR=$CD_BUILD_DIR/pool/main/z/zinstaller-remote
-        mkdir -p $UDEB_DIR
-        rm $UDEB_DIR/*
-        cp $TMPDIR/zinstaller-remote*.udeb $UDEB_DIR/
-
-        # FIXME: workaround until https://bugs.launchpad.net/ubuntu/+source/curl/+bug/1312241 is fixed
-        UDEB_DIR=$CD_BUILD_DIR/pool/main/c/curl
-        cp ~/build/curl-udeb_7.35.0-1ubuntu2.3_amd64.udeb $UDEB_DIR/curl-udeb_7.35.0-1ubuntu2.5_amd64.udeb
-        cp ~/build/libcurl3-udeb_7.35.0-1ubuntu2.3_amd64.udeb $UDEB_DIR/libcurl3-udeb_7.35.0-1ubuntu2.5_amd64.udeb
-    fi
-
     # Add zinstaller-headless udeb
     UDEB_DIR=$CD_BUILD_DIR/pool/main/z/zinstaller-headless
     mkdir -p $UDEB_DIR
@@ -95,7 +71,17 @@ do
     test -d $CD_BUILD_DIR/isolinux || (echo "isolinux directory not found in $CD_BUILD_DIR."; false) || exit 1
     test -d $CD_BUILD_DIR/.disk || (echo ".disk directory not found in $CD_BUILD_DIR."; false) || exit 1
 
-    cp images/* $CD_BUILD_DIR/isolinux/
+    cp images/splash.* $CD_BUILD_DIR/isolinux/
+    cp images/splash.png $CD_BUILD_DIR/install/netboot/ubuntu-installer/$ARCH/boot-screens/
+    pushd $CD_BUILD_DIR/isolinux
+    mkdir tmp
+    cd tmp
+    cat ../bootlogo | cpio -i
+    cp $BASE_DIR/images/splash.pcx .
+    find . | cpio -o > ../bootlogo
+    cd ..
+    rm -rf tmp
+    popd
 
     pushd $SCRIPTS_DIR
 

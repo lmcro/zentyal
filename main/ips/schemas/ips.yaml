@@ -1,0 +1,14 @@
+class: 'EBox::IPS'
+
+depends:
+    - firewall
+
+enabledepends:
+    - firewall
+
+models:
+    - Interfaces
+    - Rules
+
+composites:
+    General: [Interfaces, Rules]

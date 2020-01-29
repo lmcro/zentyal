@@ -26,7 +26,7 @@ use EBox::Model::Manager;
 use EBox::Validate;
 use EBox::Html;
 use POSIX qw(ceil);
-use TryCatch::Lite;
+use TryCatch;
 
 use constant PAGESIZE => 15;
 
@@ -165,7 +165,7 @@ sub _searchLogs
         $hfilters = {};
     }
     if (exists $tableinfo->{autoFilter}) {
-        while (my ($field, $value) = each $tableinfo->{autoFilter}) {
+        while (my ($field, $value) = each %{$tableinfo->{autoFilter}}) {
             (exists $hfilters->{$field}) and next;
             $hfilters->{$field} = $value;
         }

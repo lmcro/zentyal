@@ -215,6 +215,9 @@ Header
     right: 0;
     z-index: 10;
 }
+#hmenu .expired {
+    float: left;
+}
 #hmenu a {
     float:left;
     font-size: 11px;
@@ -904,12 +907,13 @@ td[class^="icon"] {
 .icon-dhcp { background-image: url("/data/images/package-icons/zentyal-dhcp.png");}
 .icon-ebackup { background-image: url("/data/images/package-icons/zentyal-ebackup.png");}
 .icon-firewall { background-image: url("/data/images/package-icons/zentyal-firewall.png");}
+.icon-ftp { background-image: url("/data/images/package-icons/zentyal-ftp.png");}
 .icon-ips { background-image: url("/data/images/package-icons/zentyal-ips.png");}
-.icon-l2tp { background-image: url("/data/images/package-icons/zentyal-l2tp.png");}
+.icon-ipsec { background-image: url("/data/images/package-icons/zentyal-ipsec.png");}
 .icon-jabber { background-image: url("/data/images/package-icons/zentyal-jabber.png");}
 .icon-mail { background-image: url("/data/images/package-icons/zentyal-mail.png");}
 .icon-mailfilter { background-image: url("/data/images/package-icons/zentyal-mailfilter.png");}
-.icon-maintenance { background-image: url("/data/images/package-icons/zentyal-maintenance.png");}
+.icon-partner-tools { background-image: url("/data/images/package-icons/zentyal-partner-tools.png");}
 .icon-events { background-image: url("/data/images/package-icons/zentyal-events.png");}
 .icon-logs { background-image: url("/data/images/package-icons/zentyal-logs.png");}
 .icon-monitor { background-image: url("/data/images/package-icons/zentyal-monitor.png");}
@@ -920,7 +924,6 @@ td[class^="icon"] {
 .icon-printers { background-image: url("/data/images/package-icons/zentyal-printers.png");}
 .icon-radius { background-image: url("/data/images/package-icons/zentyal-radius.png");}
 .icon-register { background-image: url("/data/images/package-icons/zentyal-register.png");}
-.icon-remoteservices { background-image: url("/data/images/package-icons/zentyal-remoteservices.png");}
 .icon-samba { background-image: url("/data/images/package-icons/zentyal-samba.png");}
 .icon-sharing { background-image: url("/data/images/package-icons/zentyal-sharing.png");}
 .icon-domain { background-image: url("/data/images/package-icons/zentyal-domain.png");}
@@ -934,7 +937,7 @@ td[class^="icon"] {
 .icon-webmail { background-image: url("/data/images/package-icons/zentyal-webmail.png");}
 .icon-sogo { background-image: url("/data/images/package-icons/zentyal-sogo.png");}
 .icon-webserver { background-image: url("/data/images/package-icons/zentyal-webserver.png");}
-.icon-openchange { background-image: url("/data/images/package-icons/zentyal-openchange.png");}
+.icon-virt { background-image: url("/data/images/package-icons/zentyal-virt.png");}
 .icon-ha { background-image: url("/data/images/package-icons/zentyal-ha.png");}
 
 /**********************************************************************************************
@@ -1492,6 +1495,63 @@ border-radius: 2px;
     text-shadow: 2px 2px 1px rgba(0,0,0,0.2);
 }
 
+#activation-required{
+    position: absolute;
+    width: 100vw;
+    top: 50%;
+    left: 50%;
+    margin-bottom: 15px;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: #eee;
+}
+#activation-required header img{
+    width: 200px
+}
+#activation-required h1{
+    font-size: 30px;
+    margin: 20px 0 30px 0;
+}
+#activation-required h3{
+    font-size: 1.2em;
+    line-height: 140%;
+    border-bottom: none;
+    font-weight: 100
+}
+#activation-required .btn-green{
+    width: 300px;
+    text-transform: none;
+    font-weight: normal;
+    letter-spacing: 0px;
+    text-shadow: 2px 2px 1px rgba(0,0,0,0.2);
+}
+#activation-required #error{
+    display: inline;
+    border-color:<% $error_border %>;
+    background: <% $error_background %>;
+    color: <% $error_color %>;
+    font-weight: normal;
+    border: 1px dashed <% $error_border %>;
+    padding: 10px 15px;
+    font-size: 14px;
+}
+#ActivationRequired #content {
+    position: static;
+    margin-top: 0;
+    height: 100vh;
+}
+@media (max-height: 400px) {
+    #activation-required {
+        margin-top: -70px;
+        transform: translateX(-50%);
+    }
+}
+@media (max-width: 600px) {
+    #activation-required #error{
+        display: inline-block;
+    }
+}
+
 body.first-install {
     max-width: 1200px;
 }
@@ -1689,12 +1749,17 @@ body.first-install {
 }
 .final_installation {
     height:450px;
-    background: url("/data/software/images/fluffy_ok.png") right bottom no-repeat;
     background-color: #ddd;
     margin-top:10px;
     overflow: hidden;
     position: relative;
     padding: 40px 50px;
+}
+.final_installation_img {
+    background: url("/data/software/images/fluffy_ok.png") right bottom no-repeat;
+}
+.final_installation_img_com {
+    background: url("/data/software/images/tie_ok.png") right bottom no-repeat;
 }
 .final_installation h4 {
     font-size: 50px;
@@ -1964,13 +2029,14 @@ body.first-install {
 **************************************************************************************/
 
 .VMConsole{
-    width: 80% !important;
-    top: 50px !important;
+    left: 50% !important;
+    transform: translateX(-50%);
+    height: auto !important;
+    width: auto !important;
 }
-#load_in_dialog iframe {
+#vnc_frame {
     border: 0 solid white;
     height: 100%;
-    min-height: 600px;
     width: 100%;
 }
 .moveRowHandle {
@@ -3352,4 +3418,22 @@ OVERRIDED MODEL STYLES
 #VDomains_table button[name="revoke"] {
     display: none;
 }
-
+#System_top div.tableSearch {
+    display: none;
+}
+#System div.bDataTable {
+    display: none;
+}
+#System_table th:last-child {
+    display: none;
+}
+#System_tbody td:last-child {
+    display: none;
+}
+div[id*='ClientConfiguration_'] {
+    margin-top: 10px;
+}
+div[id*='ClientConfiguration_'] label {
+    font-weight: bold;
+    color: #333;
+}

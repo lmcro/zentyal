@@ -34,7 +34,8 @@ use EBox::Types::Union::Text;
 use EBox::Types::Port;
 use EBox::Types::Composite;
 use EBox::Types::MailAddress;
-use TryCatch::Lite;
+use TryCatch;
+use HTML::Entities;
 
 use EBox::Exceptions::External;
 
@@ -346,7 +347,7 @@ sub _validateSmarthost
 {
     my ($self, $changedFields) = @_;
 
-    my $smarthost = $changedFields->{smarthost}->value();
+    my $smarthost = HTML::Entities::encode($changedFields->{smarthost}->value());
     if (not $smarthost) {
         # no smarthost, correct..
         return undef;

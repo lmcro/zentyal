@@ -22,10 +22,12 @@ use base 'EBox::CGI::ClientBase';
 
 use EBox::Gettext;
 use EBox::Global;
+use EBox::Config;
+use EBox::WebAdmin;
 use EBox::Dashboard::Widget;
 use EBox::Dashboard::Item;
 use POSIX qw(INT_MAX);
-use TryCatch::Lite;
+use TryCatch;
 
 # TODO: Currently we can't have more than two dashboards because of
 # the design of the interface, but this could be incremented in the future
@@ -54,7 +56,6 @@ sub masonParameters
 
     # Delete first install and DR files if they exist
     EBox::Global->deleteFirst();
-    EBox::Global->deleteDisasterRecovery();
 
     unless (defined $widgetsToHide) {
         $widgetsToHide = {
@@ -165,21 +166,10 @@ sub masonParameters
         push(@params, 'softwareInstalled' => 1);
     }
 
-    my $showMessage = 0;
-    my $rs = EBox::Global->modInstance('remoteservices');
-    if (defined ($rs) and $rs->subscriptionLevel() >= 0) {
-        try {
-            # Re-check for changes
-            $rs->checkAdMessages();
-            my $rsMsg = $rs->adMessages();
-            $showMessage = 0;
-            push (@params, 'message' => $rsMsg) if ($rsMsg->{text});
-        } catch($ex) {
-            EBox::error("Error loading messages from remoteservices: $ex");
-        }
-    }
+    if (EBox::Global->communityEdition()) {
+        my $upgradeMsgData = $self->_upgradeMessage();
+        push (@params, 'upgradeMsg' => $upgradeMsgData);
 
-    if ($showMessage) {
         my $state = $sysinfo->get_state();
         my $lastTime = $state->{lastMessageTime};
         my $currentTime = time();
@@ -191,60 +181,117 @@ sub masonParameters
             if ($offset >= $msg->{days}) {
                 push (@params, 'message' => $msg);
                 last;
-            }
+            } 
         }
     }
-
-    # TODO: currently apport reports are only enabled for openchange
-    if (EBox::Global->modExists('openchange')) {
-        EBox::Sudo::silentRoot('ls /var/crash | grep -q ^_usr_sbin_samba');
-        if ($? == 0) {
-            my $style = 'margin-top: 10px; margin-bottom: -6px;';
-            my $text = __sx('Crash report found! Click the button if you want to send the following files anonymously to help fixing the issue: {p}. Although Zentyal will make a good use of this information, please review the files if you want to be sure they do not contain any sensible information. {oc}{obs}Submit crash report{cb} {obd}Discard{cb}{cc}',
-                            p  => '/var/crash/_usr_sbin_samba*',
-                            obs => "<button style=\"$style\" onclick=\"Zentyal.CrashReport.ready_to_report()\">",
-                            obd => "<button style=\"$style\" onclick=\"Zentyal.CrashReport.discard()\">",
-                            cb => '</button>', oc => '<center>', cc => '</center>');
-            my $optional = __('Optional');
-            my $email    = __('Email address');
-            my $tyText = __sx('Thank you for willing to submit your crash report. If you want to be notified about '
-                                . 'its status, enter your email: {form}{obs}Submit crash report{cb}',
-                                form => '<form class="formDiv" id="submit_crash_form"
-                                        style="margin: 15px 0;">'
-                                        . qq{<label>$email <span class="optional_field">$optional</span></label><input type="text" placeholder="foo\@example.org" name="email" class="inline-field"/>}
-                                        . '</form>',
-                                obs  => "<button onclick=\"Zentyal.CrashReport.report()\">",
-                                cb   => '</button>',
-                                );
-            push (@params, 'crashreport' => {'ready' => $text, 'ty' => $tyText});
-        }
-    }
-
+    EBox::info(@params);
     return \@params;
 }
 
 sub _periodicMessages
 {
-    my $CONF_BACKUP = '/RemoteServices/Backup/Index';
-
     # FIXME: Close the message also when clicking the URL, not only with the close button
     return [
         {
-         name => 'backup',
-         text => __sx('Do you want a remote configuration backup of your Zentyal Server? Set it up {oh}here{ch} for FREE!', oh => "<a href=\"$CONF_BACKUP\">", ch => '</a>'),
-         days => 1,
-        },
-        {
          name => 'trial',
-         text => __sx('Are you interested in a commercial Zentyal Server edition? {oh}Get{ch} a FREE 30-day Trial!', oh => '<a href="https://remote.zentyal.com/trial/ent/">', ch => '</a>'),
+         text => __sx('Are you interested in a commercial Zentyal Server edition? {oh}Get{ch} a FREE 45-day Trial!', 
+         oh => '<a href="http://www.zentyal.com/zentyal-server/trial/">', 
+         ch => '</a>'),
          days => 7,
         },
         {
          name => 'community',
-         text => __sx('Are you a happy Zentyal Server user? Do you want to help the project? Get involved in the {oh}Community{ch}!', oh => '<a href="http://www.zentyal.org">', ch => '</a>'),
+         text => __sx('Are you a happy Zentyal Server user? Do you want to help the project? Get involved in the {oh}Community{ch}!', 
+         oh => '<a href="http://www.zentyal.org">', 
+         ch => '</a>'),
          days => 30,
         },
     ];
+}
+
+# Method: _upgradeMessage
+#
+# Returns:
+#
+#       Returns an array that will be pushed to @params array at masonParameters method
+#
+sub _upgradeMessage
+{
+    my ($self) = @_;
+
+    my ($curMajor, $curMinor) = split('[\.]',$self->_getCurrentVersion());
+    my $newVersion = $self->_getNewVersionFromCloud();
+    my ($newMajor, $newMinor) = split('[\.]', $newVersion);
+    chomp($newVersion);
+    my $RELEASE_ANNOUNCEMENT_URL = "http://wiki.zentyal.org/wiki/Zentyal_".$newVersion."_Announcement";
+    my $upgradeAction = "releaseUpgrade('Upgrading to Zentyal ".$newVersion."')";
+    my $msg;
+    
+    if ($curMajor < $newMajor ||
+        $curMinor < $newMinor && 
+        $curMajor == $newMajor) {
+        $msg = { 
+                name => 'upgrade', 
+                text =>__sx("{oh}Zentyal ".$newVersion."{ch} is available! {ob}Upgrade now{cb}",
+                oh => "<a target=\"_blank\" href=\"$RELEASE_ANNOUNCEMENT_URL\">", 
+                ch => '</a>',
+                ob => "<button style=\"margin-left: 20px; margin-top: -6px; margin-bottom: -6px;\" onclick=\"$upgradeAction\">", 
+                cb => '</button>') };
+    } else {
+        $msg = undef;
+    } 
+
+    return $msg;
+}
+
+# Method: _getCurrentVersion
+#
+# Returns:
+#
+#       Returns an string that contains the current release minor and major version
+#
+sub _getCurrentVersion
+{
+    my ($self) = @_;
+    my $versionString = EBox::Config::version();
+
+    return $versionString;
+}
+
+# Method: _getNewVersionFromCloud
+#
+# Returns:
+#
+#       Returns an string that contains the new release minor and major version
+#
+sub _getNewVersionFromCloud
+{
+    my ($self) = @_;
+
+    my $version = EBox::Config::version();
+    my $newVersionString;
+    system("wget --quiet -O /tmp/new-release - http://update.zentyal.org/update-from-'$version'.txt");
+    try {
+        $newVersionString = $self->_readVersion();
+    } catch($ex) {
+        EBox::error("Error getting last release update from update.zentyal.com: $ex");
+    }
+
+    if ($newVersionString eq "") {
+        $newVersionString = $version;
+    } 
+
+    return $newVersionString;
+}
+
+sub _readVersion
+{
+    my $version;
+    open (my $fh, '/tmp/new-release');
+    read ($fh, $version, 16);
+    close ($fh);
+    system('rm /tmp/new-release');
+    return $version;
 }
 
 1;

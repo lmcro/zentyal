@@ -104,7 +104,9 @@ keepalive 10 120
 
 
 # client certificate common name authentication
-<& valueEntry, entry=> 'tls-remote', value => $tlsRemote &>
+% if (defined $tlsRemote) {
+verify-x509-name <% $tlsRemote %> name
+% }
 
 # For extra security beyond that provided
 # by SSL/TLS, create an "HMAC firewall"
@@ -117,6 +119,7 @@ keepalive 10 120
 ;cipher BF-CBC        # Blowfish (default)
 ;cipher AES-128-CBC   # AES
 ;cipher DES-EDE3-CBC  # Triple-DES
+cipher AES-256-CBC
 
 # Enable compression on the VPN link.
 # If you enable it here, you must also

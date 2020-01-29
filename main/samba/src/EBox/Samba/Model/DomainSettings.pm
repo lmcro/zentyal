@@ -25,8 +25,9 @@ use base 'EBox::Model::DataForm';
 
 use EBox::Gettext;
 use EBox::Validate qw(:all);
-use TryCatch::Lite;
+use TryCatch;
 use Encode;
+use File::Slurp;
 
 use EBox::Types::Union;
 use EBox::Types::Union::Text;
@@ -230,14 +231,6 @@ sub updatedRowNotify
         EBox::debug('Domain rename detected, clearing the provisioned flag');
         my $sambaMod = $self->parentModule();
         $sambaMod->getProvision->setProvisioned(0);
-    }
-
-    my $newRoaming = $row->valueByName('roaming');
-    my $oldRoaming = defined $oldRow ? $oldRow->valueByName('roaming') : $newRoaming;
-    if ($oldRoaming != $newRoaming) {
-        my $state = $self->parentModule->get_state();
-        $state->{_roamingProfilesChanged} = 1;
-        $self->parentModule->set_state($state);
     }
 }
 

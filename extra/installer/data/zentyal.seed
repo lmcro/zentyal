@@ -5,8 +5,8 @@
 ##
 
 # add zentyal repository
-d-i apt-setup/local0/repository string http://archive.zentyal.org/zentyal 4.2 main extra
-d-i apt-setup/local0/key string http://keys.zentyal.org/zentyal-4.2-archive.asc
+d-i apt-setup/local0/repository string http://packages.zentyal.org/zentyal 6.1 main extra
+d-i apt-setup/local0/key string http://keys.zentyal.org/zentyal-6.1-packages.asc
 
 # ignore error downloading key if not internet connection
 d-i apt-setup/local/key-error select Ignore
@@ -29,14 +29,19 @@ d-i pkgsel/include string zenbuntu-desktop
 # disable automatic updates, Zentyal will take care of that
 d-i pkgsel/update-policy select none
 
-# do not ask for fullname
+# do not ask for fullname or password confirmation
 d-i passwd/user-fullname string  
+d-i user-setup/allow-password-weak boolean true
 
 # do not encrypt home folder
 d-i user-setup/encrypt-home boolean false
 
 d-i preseed/early_command string \
     touch /tmp/INSTALL_MODE
+
+# FIXME: avoid installation of lightdm
+lightdm shared/default-x-display-manager select lxdm
+lxdm shared/default-x-display-manager select lxdm
 
 # late command (we prepare here the Zentyal custom installer)
 d-i preseed/late_command string \

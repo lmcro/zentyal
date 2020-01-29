@@ -5,7 +5,7 @@
     @brokenPackages
     $softwareInstalled => 0
     $message => undef
-    $crashreport => undef
+    $upgradeMsg => undef
 </%args>
 <%init>
 use utf8;
@@ -19,15 +19,14 @@ my $statusStringJson = JSON::XS->new()->encode(EBox::SysInfo::dashboardStatusStr
 <script type="text/javascript" src="/data/js/table-helper.js">//</script>
 <script type="text/javascript" src="/data/js/format.js">//</script>
 <script type="text/javascript" src="/data/js/jquery.flot.js">//</script>
-% if ($crashreport) {
-<script type="text/javascript"  src="/data/js/crashreport.js">//</script>
-<div class='notification_container warning'>
-<span id="notification_text"><% $crashreport->{ready} %></span>
+% if ($message) {
+<div class="notification_container tip">
+<span class="notification_text"><% $message->{text} %></span>
+<a id="popx" onclick="Zentyal.Dashboard.closeNotification('<% $message->{name} %>'); return false">×</a>
 </div>
-<div class="notification_container note" style="display:none;">
-<span id="notification_text"><% $crashreport->{ty} %></span>
-</div>
-% } elsif ($message) {
+% }
+
+% if ($upgradeMsg) {
 <script>
 function releaseUpgrade(title) {
       Zentyal.Dialog.showURL('/ReleaseUpgrade', {
@@ -36,9 +35,9 @@ function releaseUpgrade(title) {
       });
 }
 </script>
-<div class="notification_container tip">
-<span class="notification_text"><% $message->{text} %></span>
-<a id="popx" onclick="Zentyal.Dashboard.closeNotification('<% $message->{name} %>'); return false">×</a>
+<div class="notification_container note">
+<span class="notification_text"><% $upgradeMsg->{text} %></span>
+<a id="popx" onclick="Zentyal.Dashboard.closeNotification('<% $upgradeMsg->{name} %>'); return false">×</a>
 </div>
 % }
 
@@ -64,12 +63,12 @@ function releaseUpgrade(title) {
 <div style='clear: right;'/>
 <div class='dashboard' id="dashboard1">
 % foreach my $widget (@dashboard1) {
-    <& dashboard/widget.mas, widget => $widget, toggled => \%toggled &>
+    <& /dashboard/widget.mas, widget => $widget, toggled => \%toggled &>
 % }
 </div>
 <div class='dashboard' id="dashboard2">
 % foreach my $widget (@dashboard2) {
-    <& dashboard/widget.mas, widget => $widget, toggled => \%toggled &>
+    <& /dashboard/widget.mas, widget => $widget, toggled => \%toggled &>
 % }
 </div>
 <script type="text/javascript">

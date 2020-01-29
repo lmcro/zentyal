@@ -1,3 +1,23 @@
+6.1
+    + Update public key in seed file
+    + Remove 11_patch_apt-setup.sh because is no longer needed
+    + Update GPG signing key for packages.zentyal.org
+    + Add new packages.zentyal.org
+    + Based on Ubuntu 18.04.3
+6.0
+    + Based on Ubuntu 18.04.1
+    + Install Zentyal menu entries are now translated
+    + Fix bug asking language again if already selected on installer menu
+    + Faster installation equiring less user input during the first stage
+5.1
+    + Based on Ubuntu 16.04.4
+    + Use HWE kernel by default
+5.0.1
+    + Based on Ubuntu 16.04.3
+    + UEFI support
+    + Include all video drivers to fix boot with GUI in HyperV, KVM or other hardware
+5.0
+    + Based on Ubuntu 16.04.2
 4.2
     + Based on Ubuntu 14.04.3
     + Support for newer network cards with non-ethX default iface names

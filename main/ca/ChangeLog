@@ -1,3 +1,14 @@
+6.1
+	+ Set version to 6.1
+6.0.1
+	+ Fix issue related with CRL cert and upgrade from 5.1
+6.0
+	+ Use openssl1.0 for backwards compatibility
+	+ Fix Mason template paths
+5.1
+	+ Fix module restart in postinst
+5.0
+	+ Use SHA256 by default
 4.2.1
 	+ Set up services certificates when a new CA is created
 4.2

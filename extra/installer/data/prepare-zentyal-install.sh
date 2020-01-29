@@ -12,17 +12,18 @@ do
     cp $file $PKG_DIR 2> /dev/null
 done
 
-if [ -f /tmp/RECOVER_MODE ]
+if [ -f /media/cdrom/zentyal/commercial-edition ]
 then
-    # Set DR flag for second stage
-    DISASTER_FILE=/var/tmp/.zentyal-disaster-recovery
-    touch $DISASTER_FILE
-    chown :admin $DISASTER_FILE
-    chown g+w $DISASTER_FILE
+    mkdir -p /var/lib/zentyal/
+    touch /var/lib/zentyal/.commercial-edition
+    echo ACTIVATION-REQUIRED > /var/lib/zentyal/.license
 fi
 
-# Force update of grub before reboot
-dpkg-reconfigure zenbuntu-core
+sed -i 's/#GRUB_HIDDEN_TIMEOUT=0/GRUB_HIDDEN_TIMEOUT=0/' /etc/default/grub
+sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"/\1 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+update-grub
+
+sed -i '2s/.*\t/127.0.1.1\t/' /etc/hosts
 
 ### CUSTOM_ACTION ###
 

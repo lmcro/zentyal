@@ -1,0 +1,15 @@
+class: 'EBox::EBackup'
+
+models:
+    - BackupSettings
+    - BackupExcludes
+    - BackupStatus
+    - BackupFileList
+    - BackupRestoreLogs
+    - BackupRestoreConf
+    - BackupStorage
+
+composites:
+    BackupGeneral: [BackupSettings, BackupStorage, BackupStatus]
+    General: [BackupGeneral, BackupFileList, ServicesRestore, BackupExcludes]
+    ServicesRestore: [BackupRestoreConf, BackupRestoreLogs]

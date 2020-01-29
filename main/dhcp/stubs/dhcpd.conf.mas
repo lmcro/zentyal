@@ -11,6 +11,7 @@ Parameters:
     dnsone - String the default primary DNS server
     dnstwo - String the default secondary DNS server
     dynamicDNSEnabled - Boolean indicating whether the dynamic DNS feature is on or not
+    dynDnsSamba - Boolen infication wheter the dynamic DNS feature is on or not whit samba included
     keysFile - String with the file path to shared secret keys to update DNS server
     pidFile - String the path to the file which stores the daemon PID
 </%doc>
@@ -21,6 +22,7 @@ Parameters:
     $dnsone => ''
     $dnstwo => ''
     $dynamicDNSEnabled => 0
+    $dynDnsSamba => 0
     $keysFile => undef
     $pidFile
 </%args>
@@ -32,11 +34,18 @@ authoritative;
 option rfc3442-classless-static-routes code 121 = array of integer 8;
 # MS routes
 option ms-classless-static-routes code 249 = array of integer 8;
+# Cisco IP phones
+option voip-tftp-servers code 150 = array of ip-address;
+option shoretel-director-server code 155 = ip-address;
 
 pid-file-name "<% $pidFile %>";
 
-%       if ( $dynamicDNSEnabled ) {
+%       if ($dynamicDNSEnabled) {
+% if ($dynDnsSamba){
+ddns-update-style    none;
+%}else{
 ddns-update-style    interim;
+%}
 ddns-updates         on;
 update-static-leases on;
 %       } else {
@@ -47,7 +56,7 @@ ddns-update-style none;
 option domain-name-servers <% $dnsone %>\
 %		if(length($dnstwo) != 0) {
 , <% $dnstwo %>;
-% 		}else{
+%		}else{
 ;
 %		}
 %	}
@@ -76,7 +85,12 @@ include "<% $keysFile %>";
                 }
             }
 </%perl>
-%           if ( $ifaceToWrite ) {
-        <& dhcp/shared-network.mas, iface => $iface, ifaces => \%ifaces &>
+%           if ($ifaceToWrite) {
+<& dhcp/shared-network.mas, iface => $iface, ifaces => \%ifaces , dynDnsSamba => $dynDnsSamba &>
 %           }
 % }
+
+# Add option 150 (0x96) and 155 (0x9b)
+if exists dhcp-parameter-request-list {
+option dhcp-parameter-request-list=concat(option dhcp-parameter-request-list,96,9b);
+}

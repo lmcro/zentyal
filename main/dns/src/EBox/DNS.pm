@@ -22,7 +22,6 @@ use base qw( EBox::Module::Service
              EBox::SysInfo::Observer
              EBox::NetworkObserver );
 
-use EBox::Objects;
 use EBox::Gettext;
 use EBox::Config;
 use EBox::Service;
@@ -42,7 +41,7 @@ use EBox::Exceptions::UnwillingToPerform;
 use EBox::Exceptions::DataNotFound;
 use EBox::Exceptions::MissingArgument;
 
-use TryCatch::Lite;
+use TryCatch;
 use File::Temp;
 use File::Slurp;
 use Fcntl qw(:seek);
@@ -345,6 +344,47 @@ sub hostIpAddresses
     return $array;
 }
 
+# Method: allAddressesInOtherDomains
+#
+#   Returns a hash ref with all IPs of all domains except the given one
+#
+# Returns:
+#
+#  array ref with this structure data:
+#      ip - domain/host where used
+#
+sub allAddressesInOtherDomains
+{
+    my ($self, $myDomain) = @_;
+
+    my %ips;
+
+    my $domainTable = $self->model('DomainTable');
+    foreach my $domainId (@{$self->get_list('DomainTable/order')}) {
+        my $domainKey = "DomainTable/keys/$domainId";
+        my $domainIpRow = $self->get_hash($domainKey);
+        my $domain = $domainIpRow->{domain};
+        next if ($domain eq $myDomain);
+
+        foreach my $domainIpId (@{$self->get_list("$domainKey/ipAddresses/order")}) {
+            my $domainIpRow = $self->get_hash("$domainKey/ipAddresses/keys/$domainIpId");
+            my $domainIp = $domainIpRow->{ip};
+            $ips{$domainIp} = $domain if ($domainIp);
+        }
+
+        foreach my $domainHostId (@{$self->get_list("$domainKey/hostnames/order")}) {
+            my $hostKey = "$domainKey/hostnames/keys/$domainHostId";
+            foreach my $domainIpId (@{$self->get_list("$hostKey/ipAddresses/order")}) {
+                my $domainIpRow = $self->get_hash("$hostKey/ipAddresses/keys/$domainIpId");
+                my $domainIp = $domainIpRow->{ip};
+                $ips{$domainIp} = $domain if ($domainIp);
+            }
+        }
+    }
+
+    return \%ips;
+}
+
 # Method: getServices
 #
 #   Given a domain name, it returns an array ref of SRV records that
@@ -564,7 +604,7 @@ sub initialSetup
 
     # Create default rules and services only if installing the first time
     unless ($version) {
-        my $services = EBox::Global->modInstance('services');
+        my $services = EBox::Global->modInstance('network');
 
         my $serviceName = 'dns';
         unless ($services->serviceExists(name => $serviceName)) {
@@ -612,22 +652,7 @@ sub _daemons
 {
     return [
         {
-            'name' => 'bind9',
-            'type' => 'init.d'
-        }
-    ];
-}
-
-# Method: _daemonsToDisable
-#
-#  Overrides <EBox::Module::Service::_daemonsToDisable>
-#
-sub _daemonsToDisable
-{
-    return [
-        {
-            'name' => 'bind9',
-            'type' => 'init.d'
+            'name' => 'bind9'
         }
     ];
 }
@@ -640,9 +665,6 @@ sub _preSetConf
     my ($self) = @_;
 
     my $runResolvConf = 1;
-    if ($self->global->modExists('samba')) {
-        my $usersModule = $self->global->modInstance('samba');
-    }
     my $array = [];
     push (@{$array}, runResolvConf => $runResolvConf);
     $self->writeConfFile(BIND9DEFAULTFILE, 'dns/bind9.mas', $array,
@@ -918,18 +940,38 @@ sub _postServiceHook
 {
     my ($self, $enabled) = @_;
 
-    if ($enabled) {
+    my $samba = $self->global->modInstance('samba');
+    # TODO: separate regular nsupdateCmds with -l from dlz ones with -g
+    if ($enabled and defined($samba)) {
+        # Wait max of 30 seconds until named is listening
         my $nTry = 0;
         do {
             sleep(1);
-        } while ( $nTry < 5 and (not $self->_isNamedListening()));
-        if ( $nTry < 5 ) {
+        } while (($nTry < 30) and (not $self->_isPortListening(53)));
+        # Do nothing if Kerberos is not listening
+        if (($nTry < 5) and $self->_isPortListening(88)) {
+            my $dnsFile = new File::Temp(TEMPLATE => 'resolvXXXXXX', DIR => EBox::Config::tmp());
+            EBox::Sudo::root("cp /etc/resolvconf/interface-order $dnsFile",
+                             'echo zentyaldns.temp > /etc/resolvconf/interface-order',
+                             "echo 'nameserver 127.0.0.1' | resolvconf -a zentyaldns.temp");
+            my $keytabPath = EBox::Samba::SAMBA_DNS_KEYTAB();
+            my $hostname = $self->global()->modInstance('sysinfo')->hostName();
+            my $netbiosName = $samba->model('DomainSettings')->value('netbiosName');
+            foreach my $name ($hostname, $netbiosName, uc($netbiosName)) {
+                EBox::Sudo::silentRoot("samba-tool user list | grep ^dns-$name");
+                if ($? == 0) {
+                    EBox::Sudo::root("kinit -k -t $keytabPath dns-$name");
+                    last;
+                }
+            }
             foreach my $cmd (@{$self->{nsupdateCmds}}) {
                 EBox::Sudo::root($cmd);
                 my ($filename) = $cmd =~ m:\s(.*?)$:;
                 # Remove the temporary file
                 unlink ($filename) if -f $filename;
             }
+            EBox::Sudo::root("cp $dnsFile /etc/resolvconf/interface-order",
+                             'resolvconf -d zentyaldns.temp');
             delete $self->{nsupdateCmds};
         }
     }
@@ -1420,7 +1462,7 @@ sub _updateDynReverseZone
         unshift(@file, "zone $zone");
         push(@file, "send");
         untie(@file);
-        $self->_launchNSupdate($fh);
+        $self->_launchNSupdate($fh, 1);
     }
 }
 
@@ -1522,23 +1564,24 @@ sub _removeDeletedRR
 #
 sub _launchNSupdate
 {
-    my ($self, $fh) = @_;
+    my ($self, $fh, $reverse) = @_;
 
-    my $cmd = NS_UPDATE_CMD . ' -l -t 10 ' . $fh->filename();
+    my $auth = $reverse ? '-l' : '-g';
+    my $cmd = NS_UPDATE_CMD . " $auth -t 10 " . $fh->filename();
     $self->{nsupdateCmds} = [] unless exists $self->{nsupdateCmds};
     push (@{$self->{nsupdateCmds}}, $cmd);
     $fh->unlink_on_destroy(0);
 }
 
-# Check if named is listening
-sub _isNamedListening
+# Check if port is listening
+sub _isPortListening
 {
-    my ($self) = @_;
+    my ($self, $port) = @_;
 
     my $sock = new IO::Socket::INET(PeerAddr => '127.0.0.1',
-                                    PeerPort => 53,
+                                    PeerPort => $port,
                                     Proto    => 'tcp');
-    if ( $sock ) {
+    if ($sock) {
         close($sock);
         return 1;
     } else {
@@ -1970,6 +2013,18 @@ sub hostDomainChangedDone
                 last;
             }
         }
+    }
+}
+
+sub checkDuplicatedIP
+{
+    my ($self, $ip, $myDomain) = @_;
+
+    return if EBox::Config::boolean('allow_duplicated_ips');
+
+    my $domain = $self->allAddressesInOtherDomains($myDomain)->{$ip};
+    if ($domain) {
+        throw EBox::Exceptions::DataInUse(__x("The IP '{a}' is already in '{d}'", a => $ip, d => $domain));
     }
 }
 

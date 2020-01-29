@@ -1,3 +1,32 @@
+zentyal-ca (6.1) bionic; urgency=medium
+
+  * New upstream release
+
+ -- Bruno Lorente <blorente@zentyal.com>  Thu, 10 Oct 2019 02:22:18 +0000
+zentyal-ca (6.0.1) bionic; urgency=medium
+
+  * New upstream release
+
+ -- Bruno Lorente <blorente@zentyal.com>  Thu, 14 Oct 2019 13:21:04 +0000
+
+zentyal-ca (6.0) bionic; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sun, 02 Sep 2018 11:10:35 +0200
+
+zentyal-ca (5.1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Wed, 21 Feb 2018 12:10:44 +0100
+
+zentyal-ca (5.0) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Thu, 20 Oct 2016 00:15:44 +0200
+
 zentyal-ca (4.2.1) trusty; urgency=medium
 
   * New upstream release

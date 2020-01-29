@@ -24,7 +24,7 @@ use EBox::Gettext;
 use EBox::Global;
 use EBox::Dashboard::Widget;
 use EBox::Dashboard::Item;
-use TryCatch::Lite;
+use TryCatch;
 use JSON -convert_blessed_universally;
 
 sub new # (error=?, msg=?, cgi=?)
@@ -78,8 +78,11 @@ sub _print
     local $JSON::ConvBlessed = 1;
 
     my $json = new JSON;
-    my $js = $json->allow_blessed->convert_blessed->encode( $self->{widget} );
-    $response->body($js);
+    try {
+        my $js = $json->allow_blessed->convert_blessed->encode( $self->{widget} );
+        $response->body($js);
+    } catch {
+    }
 }
 
 1;

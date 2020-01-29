@@ -31,7 +31,7 @@ use EBox::OpenVPN::Server::ClientBundleGenerator::EBoxToEBox;
 use EBox::Exceptions::External;
 use EBox::Exceptions::Internal;
 
-use TryCatch::Lite;
+use TryCatch;
 use File::Temp;
 use Params::Validate qw(validate_pos SCALAR);
 
@@ -270,7 +270,7 @@ sub confFileParams
     push @templateParams, (dev => $self->iface());
 
     my @paramsNeeded = qw(name caCertificate certificate certificateKey
-                          proto user group dh localAddr lport routeUpCmd);
+                          proto user group localAddr lport routeUpCmd);
     foreach my $param (@paramsNeeded) {
         my $accessor_r = $self->can($param);
         defined $accessor_r or die "Cannot found accessor for param $param";

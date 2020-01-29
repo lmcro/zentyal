@@ -32,7 +32,7 @@ use EBox::Samba::Types::Select;
 use EBox::View::Customizer;
 
 # Dependencies
-use TryCatch::Lite;
+use TryCatch;
 
 # Group: Public methods
 
@@ -64,11 +64,10 @@ sub populateUser
     my @users = ();
     my $samba = EBox::Global->modInstance('samba');
     return [] unless $samba->isRunning();
-    my $list = $samba->realUsers();
+    my $list = $samba->realUsers(EBox::Config::boolean('allow_admin_user_in_shares_acl'));
     foreach my $u (@{$list}) {
         my $gr = {};
-        $gr->{value} = $u->get('samAccountName');
-        $gr->{printableValue} = $u->name();
+        $gr->{value} = $gr->{printableValue} = $u->name();
         push (@users, $gr);
     }
     return \@users;
@@ -86,8 +85,7 @@ sub populateGroup
     my $list = $samba->realGroups();
     foreach my $g (@{$list}) {
         my $gr = {};
-        $gr->{value} = $g->get('cn');
-        $gr->{printableValue} = $g->name();
+        $gr->{value} = $gr->{printableValue} = $g->name();
         push (@groups, $gr);
     }
     return \@groups;

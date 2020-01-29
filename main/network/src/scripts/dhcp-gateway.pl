@@ -19,16 +19,20 @@
 use strict;
 use warnings;
 
+my ($iface, $router) = @ARGV;
+
+use File::Slurp;
+
+write_file("/var/lib/zentyal/conf/${iface}_gw", $router);
+
 use EBox;
 use EBox::Global;
 use EBox::Util::Lock;
-use TryCatch::Lite;
+use TryCatch;
 
 EBox::init();
 
 my $network = EBox::Global->modInstance('network');
-
-my ($iface, $router) = @ARGV;
 
 EBox::debug("Called dhcp-gateway.pl with the following values: iface '$iface' router '$router'");
 

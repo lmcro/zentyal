@@ -1,3 +1,45 @@
+zentyal-antivirus (6.1.1) bionic; urgency=medium
+
+  * New upstream release
+
+ -- Bruno Lorente <blorente@zentyal.com>  Thu, 12 Dic 2019 10:53:39 +0000
+
+zentyal-antivirus (6.1) bionic; urgency=medium
+
+  * New upstream release
+
+ -- Bruno Lorente <blorente@zentyal.com>  Thu, 10 Oct 2019 02:19:32 +0000
+
+zentyal-antivirus (6.0) bionic; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sun, 02 Sep 2018 11:10:35 +0200
+
+zentyal-antivirus (5.1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Wed, 21 Feb 2018 12:10:45 +0100
+
+zentyal-antivirus (5.0.2) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Fri, 28 Jul 2017 13:09:07 +0200
+
+zentyal-antivirus (5.0.1) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sun, 26 Feb 2017 14:33:54 +0100
+
+zentyal-antivirus (5.0) xenial; urgency=medium
+
+  * New upstream release
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sun, 12 Feb 2017 07:57:13 +0100
+
 zentyal-antivirus (4.2) trusty; urgency=medium
 
   * New upstream release

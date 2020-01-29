@@ -1,0 +1,4 @@
+class: 'EBox::FTP'
+
+models:
+    - Options

@@ -31,7 +31,7 @@ use EBox::Types::Boolean;
 use HTML::Mason::Interp;
 use JSON;
 use List::Util; # first
-use TryCatch::Lite;
+use TryCatch;
 
 # EBox exceptions
 use EBox::Exceptions::MissingArgument;
@@ -245,6 +245,7 @@ sub skipField
     my $actions = $self->{onChangeActions};
     for my $triggerField (keys %$values) {
         my $actualValue = $values->{$triggerField};
+        next unless defined ($actualValue);
         my $actionTriggered = $actions->{$triggerField}->{$actualValue};
         my $disable = $actionTriggered->{disable};
         my $hide = $actionTriggered->{hide};

@@ -11,7 +11,7 @@ pushd $CD_BUILD_DIR/install
 mkdir tmp
 cd tmp
 gunzip < ../initrd.gz | cpio --extract --preserve
-cp $DATA_DIR/palette.zentyal etc/newt/palette.ubuntu
+cp $DATA_DIR/palette.zentyal etc/newt/palette
 find . | cpio --create --'format=newc' | gzip > ../initrd.gz
 cd ..
 rm -rf tmp

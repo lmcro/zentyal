@@ -6,8 +6,6 @@ Parameters:
     port - Int the listening port.
     tmpdir - String the path to the WebAdmin temporary directory.
     zentyalconfdir - String the path to the WebAdmin configuration folder.
-    includes - Array. The list of configuration files to include.
-    servers - Array The list of configuration files with servers definition.
     restrictedresources - Array containing a hash ref structure which contains
                           the following elements:
                           - allowedIPs - array ref containing the allowed IPs
@@ -20,8 +18,6 @@ Parameters:
     $tmpdir
     $zentyalconfdir
     $caFile
-    @includes => ()
-    @servers => ()
     @restrictedresources => ()
 </%args>
 <%init>
@@ -142,6 +138,9 @@ http {
            root /usr/share/zentyal/www;
         }
 
+        # To allow POST on static pages (needed for vncviewer in zentyal-virt)
+        error_page 405 =200 $uri;
+
         location /data/ {
 <& .restricted, restrictions => $sectionrestrictions{'/data/'} &>
             root /usr/share/zentyal/www;
@@ -156,6 +155,8 @@ http {
             return   403;
         }
 <& .restricted, restrictions => $sectionrestrictions{''} &>
+
+        include /var/lib/zentyal/conf/nginx-*.conf;
 
         location @proxy {
             uwsgi_pass unix:///run/zentyal-webadmin/webadmin.sock;
@@ -177,16 +178,8 @@ http {
             uwsgi_param SERVER_NAME $server_name;
             uwsgi_param HTTP_X_FORWARDED_PROTO https;
         }
-% foreach my $includeFile (@includes) {
-
-        include <% $includeFile %>;
-% }
     }
 
-% foreach my $serverFile (@servers) {
-
-    include <% $serverFile %>;
-% }
 }
 <%def .restricted>
 <%args>

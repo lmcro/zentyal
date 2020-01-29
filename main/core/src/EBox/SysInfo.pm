@@ -24,7 +24,7 @@ use HTML::Entities;
 use Sys::Hostname;
 use Sys::CpuLoad;
 use File::Slurp qw(read_file);
-use TryCatch::Lite;
+use TryCatch;
 
 use EBox::Config;
 use EBox::Gettext;
@@ -44,6 +44,11 @@ use EBox::Exceptions::Internal;
 
 use constant LATEST_VERSION => '/var/lib/zentyal/latestversion';
 use constant UPDATES_URL => 'http://update.zentyal.org/updates';
+use constant SMARTADMINREPORT_CRON_FILE => '/etc/cron.d/smart_admin-status_report';
+use constant SMARTADMINKM_CRON_FILE => '/etc/cron.d/smart_admin-kernel_management';
+use constant SMARTADMIN_ALERT_CPU_CRON_FILE => '/etc/cron.d/smart_admin_alert_cpu';
+use constant SMARTADMIN_ALERT_RAM_CRON_FILE => '/etc/cron.d/smart_admin_alert_ram';
+use constant SMARTADMIN_ALERT_DISK_CRON_FILE => '/etc/cron.d/smart_admin_alert_disk';
 
 sub _create
 {
@@ -114,19 +119,25 @@ sub menu
                                       'text' => __('Date/Time'),
                                       'order' => 20));
 
-    $system->add(new EBox::Menu::Item('url' => 'SysInfo/Cloud/Backup',
+    if (-f '/var/lib/zentyal/.commercial-edition') {
+        $system->add(new EBox::Menu::Item('url'   => 'SysInfo/View/Edition',
+                                          'text'  => __('Server Edition'),
+                                          'order' => 30,
+                                         ));
+    }
+
+    $system->add(new EBox::Menu::Item('url' => 'SysInfo/Backup',
                                       'text' => __('Configuration Backup'),
                                       'order' => 50));
-
-    if (EBox::Config::boolean('debug')) {
-        $system->add(new EBox::Menu::Item('url' => 'SysInfo/View/Debug',
-                                          'text' => __('Debug'),
-                                          'order' => 55));
-    }
 
     $system->add(new EBox::Menu::Item('url' => 'SysInfo/View/Halt',
                                       'text' => __('Halt/Reboot'),
                                       'order' => 60));
+
+    $system->add(new EBox::Menu::Item('url' => 'SysInfo/SmartAdmin',
+                                      'text' => __('Smart Admin'),
+                                      'order' => 70));
+                                      
     $root->add($system);
 }
 
@@ -145,7 +156,7 @@ sub _setConf
     my $tz = $timezoneModel->row()->elementByName('timezone');
     my $tzStr = $tz->printableValue();
     EBox::Sudo::root("echo $tzStr > /etc/timezone",
-                     "cp -f /usr/share/zoneinfo/$tzStr /etc/localtime");
+                     "ln -sf /usr/share/zoneinfo/$tzStr /etc/localtime");
 
     # Host name
     my $hostNameModel = $self->model('HostName');
@@ -158,6 +169,12 @@ sub _setConf
         }
         EBox::Sudo::root($cmd);
     }
+    
+    $self->setSmartAdminReportCron();
+    $self->setSmartAdminKMCron();
+    $self->setSmartAdminAlertRamCron();
+    $self->setSmartAdminAlertDiskCron();
+    $self->setSmartAdminAlertCpuCron();
 }
 
 # Method: fqdn
@@ -286,12 +303,6 @@ sub generalWidget
     my $time = `$time_command`;
     utf8::decode($time);
 
-    my $qaUpdates = 0;
-    if (EBox::Global->modExists('remoteservices')) {
-        my $rs = EBox::Global->modInstance('remoteservices');
-        $qaUpdates = $rs->subscriptionLevel() > 0;
-    }
-
     my $version = $self->version();
     my $ignore = EBox::Config::boolean('widget_ignore_updates');
     unless ($ignore or (not -f LATEST_VERSION)) {
@@ -303,7 +314,7 @@ sub generalWidget
         close ($fh);
 
         if (EBox::Util::Version::compare($lastVersion, $version) == 1) {
-            unless ($qaUpdates) {
+            if (EBox::Global->communityEdition()) {
                 my $available = __('available');
                 $version .=
                     " (<a target='_blank' href='$url'>$lastVersion $available</a>)";
@@ -352,7 +363,6 @@ sub linksWidget
     # Write the links widget using mason
     my $global = $self->global();
     my @params = (
-        rsPackage => $global->modExists('remoteservices'),
         softwarePackage => $global->modExists('software'),
         community => $global->communityEdition(),
         registered => ($global->edition() eq 'basic'),
@@ -484,6 +494,267 @@ sub dashboardStatusStrings
      };
 
     return $_dashboardStatusStrings;
+}
+
+# Method: setSmartAdminReportCron
+#
+#   configure crontab according to user configuration
+#   to call our report script
+#
+sub setSmartAdminReportCron
+{
+    my ($self) = @_;
+
+    my @lines;
+    my $strings = $self->model('SmartAdminReportSettings')->crontabStrings();
+
+    my $nice = 10;
+    my $script = '';
+    if ($nice) {
+        if ($nice =~ m/^\d+$/) {
+            $script = "root /usr/bin/nice -n $nice " if $nice > 0;
+        } 
+    }
+
+    my $destination = $strings->{mail};
+    if (defined $destination) {
+        $script .= EBox::Config::scripts() . "smart-admin-report > /usr/share/zentyal/www/smart-admin.report && /usr/sbin/sendmail " . $strings->{mail} . ' < /usr/share/zentyal/www/smart-admin.report >/dev/null 2>&1';
+    } else {
+        $script .= EBox::Config::scripts() . "smart-admin-report > /usr/share/zentyal/www/smart-admin.report >/dev/null 2>&1";
+    }
+  
+    my $tmpFile = EBox::Config::tmp() . 'smartadmin_report-cron';
+    open(my $tmp, '>', $tmpFile);
+
+    my $onceList = $strings->{once};
+    if ($onceList) {
+        foreach my $once (@{ $onceList }) {
+            push (@lines, "$once $script");
+        }
+    }
+    for my $line (@lines) {
+        print $tmp "$line\n";
+    }
+
+    close($tmp);
+
+    my $dst = smartAdminReportCronFile();
+    EBox::Sudo::root("install --mode=0644 $tmpFile $dst");
+}
+
+sub smartAdminReportCronFile
+{
+    return SMARTADMINREPORT_CRON_FILE;
+}
+
+# Method: setSmartAdminKMCron
+#
+#   configure crontab according to user configuration
+#   to call our kernel management script
+#
+sub setSmartAdminKMCron
+{
+    my ($self) = @_;
+
+    my @lines;
+    my $strings = $self->model('KernelManagement')->crontabStrings();
+
+    if ($strings) {
+        my $nice = 10;
+        my $script = '';
+        if ($nice) {
+            if ($nice =~ m/^\d+$/) {
+                $script = "root /usr/bin/nice -n $nice " if $nice > 0;
+            } 
+        }
+
+        $script .= EBox::Config::scripts() . "kernel-management >/dev/null 2>&1";
+
+        my $tmpFile = EBox::Config::tmp() . 'smartadmin_kernel-management';
+        open(my $tmp, '>', $tmpFile);
+
+        my $onceList = $strings->{once};
+        if ($onceList) {
+            foreach my $once (@{ $onceList }) {
+                push (@lines, "$once $script");
+            }
+        }
+        for my $line (@lines) {
+            print $tmp "$line\n";
+        }
+
+        close($tmp);
+
+        my $dst = smartAdminKMCronFile();
+        EBox::Sudo::root("install --mode=0644 $tmpFile $dst");
+    } else {
+        if (-f SMARTADMINKM_CRON_FILE) {
+            EBox::Sudo::root('rm -f '.SMARTADMINKM_CRON_FILE);
+        }
+    }
+    
+}
+
+sub smartAdminKMCronFile
+{
+    return SMARTADMINKM_CRON_FILE;
+}
+
+# Method: setSmartAdminAlertRamCron
+#
+#   configure crontab according to user configuration
+#   to call our ram alert script
+#
+sub setSmartAdminAlertRamCron
+{
+    my ($self) = @_;
+
+    my @lines;
+    my $strings = $self->model('SmartAlerts')->crontabStringsRam();
+
+    if ($strings) {
+        my $nice = 10;
+        my $script = '';
+        if ($nice) {
+            if ($nice =~ m/^\d+$/) {
+                $script = "root /usr/bin/nice -n $nice " if $nice > 0;
+            } 
+        }
+
+        $script .= EBox::Config::scripts() .'checker-ram "'.$strings->{resource}.'" "'.$strings->{alert_body}.'" "'.$strings->{telegram} .'" "'.$strings->{api_token}.'" >/dev/null 2>&1';
+
+        my $tmpFile = EBox::Config::tmp() . 'smartadmin_alerts-ram';
+        open(my $tmp, '>', $tmpFile);
+
+        my $onceList = $strings->{once};
+        if ($onceList) {
+            foreach my $once (@{ $onceList }) {
+                push (@lines, "$once $script");
+            }
+        }
+        for my $line (@lines) {
+            print $tmp "$line\n";
+        }
+
+        close($tmp);
+
+        my $dst = smartAdminAlertRamCronFile();
+        EBox::Sudo::root("install --mode=0644 $tmpFile $dst");
+    } else {
+        if (-f SMARTADMIN_ALERT_RAM_CRON_FILE) {
+            EBox::Sudo::root('rm -f '.SMARTADMIN_ALERT_RAM_CRON_FILE);
+        }
+    }
+}
+
+sub smartAdminAlertRamCronFile
+{
+    return SMARTADMIN_ALERT_RAM_CRON_FILE;
+}
+
+# Method: setSmartAdminAlertDiskCron
+#
+#   configure crontab according to user configuration
+#   to call our disk alert script
+#
+sub setSmartAdminAlertDiskCron
+{
+    my ($self) = @_;
+
+    my @lines;
+    my $strings = $self->model('SmartAlerts')->crontabStringsDisk();
+
+    if ($strings) {
+        my $nice = 10;
+        my $script = '';
+        if ($nice) {
+            if ($nice =~ m/^\d+$/) {
+                $script = "root /usr/bin/nice -n $nice " if $nice > 0;
+            } 
+        }
+
+        $script .= EBox::Config::scripts() .'checker-disk "'.$strings->{resource}.'" "'.$strings->{alert_body}.'" "'.$strings->{telegram} .'" "'.$strings->{api_token}.'" >/dev/null 2>&1';
+
+        my $tmpFile = EBox::Config::tmp() . 'smartadmin_alerts-disk';
+        open(my $tmp, '>', $tmpFile);
+
+        my $onceList = $strings->{once};
+        if ($onceList) {
+            foreach my $once (@{ $onceList }) {
+                push (@lines, "$once $script");
+            }
+        }
+        for my $line (@lines) {
+            print $tmp "$line\n";
+        }
+
+        close($tmp);
+
+        my $dst = smartAdminAlertDiskCronFile();
+        EBox::Sudo::root("install --mode=0644 $tmpFile $dst");
+    } else {
+        if (-f SMARTADMIN_ALERT_DISK_CRON_FILE) {
+            EBox::Sudo::root('rm -f '.SMARTADMIN_ALERT_DISK_CRON_FILE);
+        }
+    }
+    
+}
+
+sub smartAdminAlertDiskCronFile
+{
+    return SMARTADMIN_ALERT_DISK_CRON_FILE;
+}
+
+# Method: setSmartAdminAlertCpuCron
+#
+#   configure crontab according to user configuration
+#   to call our cpu alert script
+#
+sub setSmartAdminAlertCpuCron
+{
+    my ($self) = @_;
+
+    my @lines;
+    my $strings = $self->model('SmartAlerts')->crontabStringsCpu();
+
+    if ($strings) {
+        my $nice = 10;
+        my $script = '';
+        if ($nice) {
+            if ($nice =~ m/^\d+$/) {
+                $script = "root /usr/bin/nice -n $nice " if $nice > 0;
+            } 
+        }
+
+        $script .= EBox::Config::scripts() .'checker-cpu "'.$strings->{resource}.'" "'.$strings->{alert_body}.'" "'.$strings->{telegram} .'" "'.$strings->{api_token}.'" >/dev/null 2>&1';
+
+        my $tmpFile = EBox::Config::tmp() . 'smartadmin_alerts-cpu';
+        open(my $tmp, '>', $tmpFile);
+
+        my $onceList = $strings->{once};
+        if ($onceList) {
+            foreach my $once (@{ $onceList }) {
+                push (@lines, "$once $script");
+            }
+        }
+        for my $line (@lines) {
+            print $tmp "$line\n";
+        }
+
+        close($tmp);
+
+        my $dst = smartAdminAlertCpuCronFile();
+        EBox::Sudo::root("install --mode=0644 $tmpFile $dst");
+    } else {
+        if (-f SMARTADMIN_ALERT_CPU_CRON_FILE) {
+            EBox::Sudo::root('rm -f '.SMARTADMIN_ALERT_CPU_CRON_FILE);
+        }
+    }
+}
+
+sub smartAdminAlertCpuCronFile
+{
+    return SMARTADMIN_ALERT_CPU_CRON_FILE;
 }
 
 1;

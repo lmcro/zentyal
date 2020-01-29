@@ -27,7 +27,7 @@ use EBox::Config;
 use EBox::SysInfo;
 use EBox::Sudo;
 
-use TryCatch::Lite;
+use TryCatch;
 
 sub new
 {
@@ -50,13 +50,8 @@ sub _process
         return;
     }
 
-    my $qaUpdates = 0;
+    my $qaUpdates = (-f '/etc/apt/sources.list.d/zentyal-qa.list');
     my $ignore = EBox::Config::boolean('widget_ignore_updates');
-
-    if (EBox::Global->modExists('remoteservices')) {
-        my $rs = EBox::Global->modInstance('remoteservices');
-        $qaUpdates = $rs->subscriptionLevel() > 0;
-    }
 
     my $updatesStr = __('No updates');
     my $updatesType = 'good';
@@ -118,7 +113,7 @@ sub _process
 # Return commercial message for QA updates
 sub _commercialMsg
 {
-    return __s('Warning: These are untested community updates that might harm your system. In production environments we recommend using the Commercial Edition: commercial Zentyal Server editions fully supported by Zentyal S.L. and Canonical/Ubuntu.');
+    return __s('Warning: These are untested community updates that might harm your system. In production environments we recommend using the Commercial Zentyal Server Edition.');
 }
 
 sub _secureMsg

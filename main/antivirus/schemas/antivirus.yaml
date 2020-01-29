@@ -3,4 +3,9 @@ depends:
     - network
 
 models:
-    - FreshclamStatus
+    - Paths
+    - System
+
+composites:
+    Updates: []
+    General: [Updates, Paths, System]
